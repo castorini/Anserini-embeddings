@@ -1,3 +1,19 @@
+/**
+ * Anserini: A toolkit for reproducible information retrieval research built on Lucene
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.anserini.embeddings;
 
 import org.apache.commons.lang3.time.DurationFormatUtils;
@@ -13,32 +29,53 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.deeplearning4j.models.embeddings.wordvectors.*;
-import org.deeplearning4j.models.embeddings.loader.*;
+import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
+import org.deeplearning4j.models.embeddings.wordvectors.WordVectors;
 import org.deeplearning4j.models.word2vec.wordstore.VocabCache;
+import org.kohsuke.args4j.Option;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 
-public class LoadGloVe {
-  private static final Logger LOG = LogManager.getLogger(LoadGloVe.class);
+public class IndexGloVe {
+  private static final Logger LOG = LogManager.getLogger(IndexGloVe.class);
+
+  public static final class Args {
+    @Option(name = "-input", metaVar = "[file]", required = true, usage = "GloVe data")
+    public File input;
+
+    @Option(name = "-index", metaVar = "[path]", required = true, usage = "index path")
+    public Path index;
+  }
 
   public static final String FIELD_WORD = "word";
   public static final String FIELD_VECTOR = "vector";
 
   public static void main(String[] args) throws Exception {
+//    Args indexArgs = new Args();
+//    CmdLineParser parser = new CmdLineParser(indexArgs, ParserProperties.defaults().withUsageWidth(90));
+//
+//    try {
+//      parser.parseArgument(args);
+//    } catch (CmdLineException e) {
+//      System.err.println(e.getMessage());
+//      parser.printUsage(System.err);
+//      System.err.println("Example: "+ IndexGloVe.class.getSimpleName() +
+//          parser.printExample(OptionHandlerFilter.REQUIRED));
+//      return;
+//    }
+
     long startTime = System.currentTimeMillis();
     LOG.info("Loading GloVe vectors...");
-    WordVectors wordVectors = WordVectorSerializer.loadTxtVectors(new File("../Castor-data/embeddings/GloVe/glove.840B.300d.txt"));
+    WordVectors wordVectors = WordVectorSerializer.loadTxtVectors(new File("../Castor-data/embeddings/GloVe/glove.840B.300d.short.txt"));
     LOG.info("Completed in " + (System.currentTimeMillis()-startTime)/1000 + "s elapsed.");
 
     final long start = System.nanoTime();
@@ -55,14 +92,23 @@ public class LoadGloVe {
     VocabCache vocab = wordVectors.vocab();
     vocab.words().forEach(obj -> {
       String word = (String) obj;
-      //System.out.println(word + " " + Arrays.toString(wordVectors.getWordVector(word)));
-
       Document doc = new Document();
 
-      String v = Arrays.toString(wordVectors.getWordVector(word));
+      double[] vector = wordVectors.getWordVector(word);
+      ByteArrayOutputStream bytesOut = new ByteArrayOutputStream();
+      try {
+        DataOutputStream dataOut = new DataOutputStream(bytesOut);
+        dataOut.writeInt(vector.length);
+        for (int i = 0; i < vector.length; i++) {
+          dataOut.writeDouble(vector[i]);
+        }
+        dataOut.close();
+      } catch (IOException e) {
+        LOG.error(e);
+      }
 
       doc.add(new TextField(FIELD_WORD, word, Field.Store.YES));
-      doc.add(new StringField(FIELD_VECTOR, v, Field.Store.YES));
+      doc.add(new StoredField(FIELD_VECTOR, bytesOut.toByteArray()));
       try {
         writer.addDocument(doc);
         int cur = cnt.incrementAndGet();
