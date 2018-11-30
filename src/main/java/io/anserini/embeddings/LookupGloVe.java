@@ -35,13 +35,15 @@ import org.kohsuke.args4j.ParserProperties;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
-import java.io.File;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
 
-public class LookupGlove {
+/**
+ * Example illustrating how to look up word vectors. Note that terms are processed with a Lucene Analyzer, which means
+ * that a query term may match multiple entries in the original GloVe work embeddings. It's up to the client to figure
+ * out how to deal with this issue.
+ */
+public class LookupGloVe {
   public static final class Args {
     @Option(name = "-word", metaVar = "[word]", required = true, usage = "word to look up")
     public String word;
@@ -52,14 +54,14 @@ public class LookupGlove {
 
   public static void main(String[] args) throws Exception {
     Args lookupArgs = new Args();
-    CmdLineParser parser = new CmdLineParser(args, ParserProperties.defaults().withUsageWidth(90));
+    CmdLineParser parser = new CmdLineParser(lookupArgs, ParserProperties.defaults().withUsageWidth(90));
 
     try {
       parser.parseArgument(args);
     } catch (CmdLineException e) {
       System.err.println(e.getMessage());
       parser.printUsage(System.err);
-      System.err.println("Example: "+ LookupGlove.class.getSimpleName() +
+      System.err.println("Example: "+ LookupGloVe.class.getSimpleName() +
           parser.printExample(OptionHandlerFilter.REQUIRED));
       return;
     }
@@ -90,13 +92,13 @@ public class LookupGlove {
       DataInputStream in = new DataInputStream(new ByteArrayInputStream(value));
 
       int cnt = in.readInt();
-      double[] vector = new double[cnt];
+      float[] vector = new float[cnt];
       for (int n=0; n<vector.length; n++) {
         vector[n] = in.readFloat();
       }
 
-      System.out.println(doc.getField(IndexGloVe.FIELD_WORD).stringValue() + " " + tokens.size() + " " +
-          Arrays.toString(vector));
+      System.out.println(String.format("%s %d [%f, %f, %f, %f ... ]", doc.getField(IndexGloVe.FIELD_WORD).stringValue(),
+          tokens.size(), vector[0], vector[1], vector[2], vector[3]));
     }
   }
 }

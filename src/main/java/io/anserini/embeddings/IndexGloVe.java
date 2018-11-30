@@ -20,7 +20,6 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
@@ -46,6 +45,9 @@ import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Takes GloVe word embeddings and creates a Lucene index for lookup. This is treating Lucene as a simple key-value store.
+ */
 public class IndexGloVe {
   private static final Logger LOG = LogManager.getLogger(IndexGloVe.class);
 
@@ -137,6 +139,5 @@ public class IndexGloVe {
     long duration = TimeUnit.MILLISECONDS.convert(System.nanoTime() - start, TimeUnit.NANOSECONDS);
     LOG.info("Total " + numIndexed + " words indexed in " +
         DurationFormatUtils.formatDuration(duration, "HH:mm:ss"));
-
   }
 }
