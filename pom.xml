@@ -94,24 +94,12 @@
           <extraJvmArguments>-Xms512M -Xmx256G</extraJvmArguments>
           <programs>
             <program>
-              <mainClass>io.anserini.index.IndexCollection</mainClass>
-              <id>IndexCollection</id>
+              <mainClass>io.anserini.embeddings.IndexGloVe</mainClass>
+              <id>IndexGloVe</id>
             </program>
             <program>
-              <mainClass>io.anserini.util.MapCollections</mainClass>
-              <id>MapCollections</id>
-            </program>
-            <program>
-              <mainClass>io.anserini.search.SearchCollection</mainClass>
-              <id>SearchCollection</id>
-            </program>
-            <program>
-              <mainClass>io.anserini.eval.Eval</mainClass>
-              <id>Eval</id>
-            </program>
-            <program>
-              <mainClass>io.anserini.index.IndexUtils</mainClass>
-              <id>IndexUtils</id>
+              <mainClass>io.anserini.embeddings.LookupGloVe</mainClass>
+              <id>LookupGloVe</id>
             </program>
           </programs>
         </configuration>

@@ -19,11 +19,11 @@ package io.anserini.embeddings;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
-import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -32,16 +32,17 @@ import org.apache.lucene.store.FSDirectory;
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
 import org.deeplearning4j.models.embeddings.wordvectors.WordVectors;
 import org.deeplearning4j.models.word2vec.wordstore.VocabCache;
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
+import org.kohsuke.args4j.OptionHandlerFilter;
+import org.kohsuke.args4j.ParserProperties;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -60,29 +61,29 @@ public class IndexGloVe {
   public static final String FIELD_VECTOR = "vector";
 
   public static void main(String[] args) throws Exception {
-//    Args indexArgs = new Args();
-//    CmdLineParser parser = new CmdLineParser(indexArgs, ParserProperties.defaults().withUsageWidth(90));
-//
-//    try {
-//      parser.parseArgument(args);
-//    } catch (CmdLineException e) {
-//      System.err.println(e.getMessage());
-//      parser.printUsage(System.err);
-//      System.err.println("Example: "+ IndexGloVe.class.getSimpleName() +
-//          parser.printExample(OptionHandlerFilter.REQUIRED));
-//      return;
-//    }
+    Args indexArgs = new Args();
+    CmdLineParser parser = new CmdLineParser(indexArgs, ParserProperties.defaults().withUsageWidth(90));
+
+    try {
+      parser.parseArgument(args);
+    } catch (CmdLineException e) {
+      System.err.println(e.getMessage());
+      parser.printUsage(System.err);
+      System.err.println("Example: "+ IndexGloVe.class.getSimpleName() +
+          parser.printExample(OptionHandlerFilter.REQUIRED));
+      return;
+    }
 
     long startTime = System.currentTimeMillis();
     LOG.info("Loading GloVe vectors...");
-    WordVectors wordVectors = WordVectorSerializer.loadTxtVectors(new File("../Castor-data/embeddings/GloVe/glove.840B.300d.short.txt"));
+    WordVectors wordVectors = WordVectorSerializer.loadTxtVectors(indexArgs.input);
     LOG.info("Completed in " + (System.currentTimeMillis()-startTime)/1000 + "s elapsed.");
 
     final long start = System.nanoTime();
     LOG.info("Starting indexer...");
 
-    final Directory dir = FSDirectory.open(Paths.get("glove-index"));
-    final SimpleAnalyzer analyzer = new SimpleAnalyzer();
+    final Directory dir = FSDirectory.open(indexArgs.index);
+    final Analyzer analyzer = new EnglishStemmingAnalyzer("porter"); // Default used in indexing.
     final IndexWriterConfig config = new IndexWriterConfig(analyzer);
     config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
 
@@ -100,7 +101,7 @@ public class IndexGloVe {
         DataOutputStream dataOut = new DataOutputStream(bytesOut);
         dataOut.writeInt(vector.length);
         for (int i = 0; i < vector.length; i++) {
-          dataOut.writeDouble(vector[i]);
+          dataOut.writeFloat((float) vector[i]);
         }
         dataOut.close();
       } catch (IOException e) {
@@ -134,9 +135,8 @@ public class IndexGloVe {
     }
 
     long duration = TimeUnit.MILLISECONDS.convert(System.nanoTime() - start, TimeUnit.NANOSECONDS);
-    LOG.info("Total " + numIndexed + " documents indexed in " +
+    LOG.info("Total " + numIndexed + " words indexed in " +
         DurationFormatUtils.formatDuration(duration, "HH:mm:ss"));
 
   }
-
 }
